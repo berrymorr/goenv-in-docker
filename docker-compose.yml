@@ -1,0 +1,47 @@
+version: '3.8'
+services:
+  db:
+    image: mysql:8.0.30
+    env_file: .env
+    ports:
+      - "3336:3306"
+    networks:
+      - go-dev
+    volumes:
+      - "./mysql_db:/var/lib/mysql"
+    restart: on-failure:5
+
+  go:
+    build:
+      context: .
+      dockerfile: goDockerfile
+      args:
+        DEV_USER: ${DEV_USER}
+        MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+        MYSQL_USER: ${MYSQL_USER}
+        MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+        MYSQL_DATABASE: ${MYSQL_DATABASE}
+        MYSQL_HOST: ${MYSQL_HOST}
+        MYSQL_PORT: ${MYSQL_PORT}
+    env_file: .env
+    ports:
+      - "2022:22"
+    networks:
+      - go-dev
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 4G
+    volumes:
+      - ./homego:/home/${DEV_USER}/go
+      - ./authorized_keys:/var/authorized_keys
+      - ./.env:/var/.env
+    depends_on:
+      - db
+    restart: on-failure:5
+
+
+networks:
+  go-dev:
+    driver: bridge

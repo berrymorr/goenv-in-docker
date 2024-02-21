@@ -1,0 +1,34 @@
+FROM golang:1.22.0-bookworm
+
+ARG DEV_USER
+ARG MYSQL_ROOT_PASSWORD
+ARG MYSQL_USER
+ARG MYSQL_PASSWORD
+ARG MYSQL_DATABASE
+ARG MYSQL_HOST
+ARG MYSQL_PORT
+
+COPY entrypoint.sh /entrypoint.sh
+
+RUN apt-get update && apt-get install -y openssh-server && \
+    systemctl disable sshd && \
+    mkdir -p /var/run/sshd && \
+    sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config && \
+    sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config && \
+    useradd -m -U -s /bin/bash "${DEV_USER}" && \
+    mkdir -vp "/home/${DEV_USER}/.ssh" && \
+    chmod -v 700 "/home/${DEV_USER}/.ssh" && \
+    touch "/home/${DEV_USER}/.ssh/authorized_keys" && \
+    chmod -v 600 "/home/${DEV_USER}/.ssh/authorized_keys" && \
+    chown -vR "${DEV_USER}:${DEV_USER}" "/home/${DEV_USER}" && \
+    sed -i '/export LS_OPTIONS/s/^\s*#\s*//' "/home/${DEV_USER}/.bashrc" && \
+    sed -i '/eval "$(dircolors)"/s/^\s*#\s*//' "/home/${DEV_USER}/.bashrc" && \
+    sed -i '/alias ls=/s/^\s*#\s*//' "/home/${DEV_USER}/.bashrc" && \
+    echo 'export PATH="/usr/local/go/bin:${PATH}"' >> "/home/${DEV_USER}/.bashrc" && \
+    echo 'export PS1="\[\e[34m\]\u\[\e[97m\]@\[\e[32m\]go-dev\[\e[97m\]:\[\e[93m\]\w\[\e[97m\]# "' >> "/home/${DEV_USER}/.bashrc" && \
+    echo 'for ln in $( cat /var/.env ); do export "${ln}"; done' >> "/home/${DEV_USER}/.bashrc" && \
+    chmod 700 /entrypoint.sh
+
+EXPOSE 22
+
+ENTRYPOINT ["/entrypoint.sh"]
